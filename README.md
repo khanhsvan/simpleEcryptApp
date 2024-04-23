@@ -6,8 +6,8 @@ Necessary libraries installed, can be installed by running:
 pip install -r requirements.txt
 ```
 pip install -r requirements.txt
-Usage Guide
-Open the application by running the main.py file.
+## Usage
+Open the application by running the .py file. \n
 Choose the encryption method from the list of available methods.
 Select the source file you want to encrypt by clicking the "Select Source file" button and choosing the corresponding file in the opened dialog box.
 Choose the location and name of the destination file where you want to save the encrypted file by clicking the "Select Destination File" button and selecting the location and name in the opened dialog box.
