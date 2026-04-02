@@ -2,7 +2,7 @@
 
 Simple Encrypt App is a Tkinter desktop application for encrypting and decrypting files with five methods:
 
-- ChaCha20-Poly1305 for fast modern file protection
+- ChaCha20-Poly1305 for fast, modern file protection with salted password-based security
 - AES for general file encryption
 - RSA with a hybrid RSA + AES format for larger files
 - Caesar cipher for text files
@@ -10,8 +10,8 @@ Simple Encrypt App is a Tkinter desktop application for encrypting and decryptin
 
 ## Requirements
 
-- Python 3.x
-- Required packages from `requirement.txt`
+- Python 3.10 or newer recommended
+- Packages listed in `requirement.txt`
 
 Install dependencies:
 
@@ -25,33 +25,45 @@ pip install -r requirement.txt
 python app.py
 ```
 
-## Better structure
+## Recommended secure mode
 
-The app is now separated into smaller modules to make it easier to control and extend:
+The recommended method for most users is `ChaCha20-Poly1305`.
 
-- `app.py`: small launcher
-- `simple_encrypt_app/constants.py`: shared app text and options
-- `simple_encrypt_app/file_utils.py`: file reading and writing helpers
-- `simple_encrypt_app/crypto_utils.py`: encryption and decryption algorithms
-- `simple_encrypt_app/services.py`: business flow for encrypting and decrypting files
-- `simple_encrypt_app/ui.py`: customer-facing desktop interface
+It now includes:
 
-## Easier customer flow
+- authenticated encryption
+- random salt and nonce per file
+- `scrypt` password-based key derivation
+- a versioned encrypted file format for future upgrades
 
-- One clear action selector for Encrypt or Decrypt
-- One method selector with plain-language guidance
-- ChaCha20-Poly1305 is now the recommended fast option for most customers
-- Step-by-step layout for choosing files and running the action
-- Status messages and recent activity log inside the app
-- Friendly popups for success and error states
+Important:
 
-## Notes
+- use a strong passphrase with at least 12 characters
+- the passphrase is not stored in the encrypted file
+- if the passphrase is weak, someone could still try offline password guessing
 
-- ChaCha20-Poly1305 uses a passphrase and is the best default choice for speed and ease of use.
-- AES keys must be 16, 24, or 32 bytes when encoded as UTF-8.
-- Caesar and Playfair are text-only methods and are best used with plain text files.
-- Playfair removes non-letter characters during encryption and decryption.
-- RSA keys are generated automatically into the local `keys/` folder when needed.
+## Other methods
+
+- `AES`: supports binary files and stores the IV in the output file
+- `RSA`: automatically creates keys in the local `keys/` folder when needed
+- `Caesar` and `Playfair`: included for learning and simple text use, not for strong real-world security
+
+## Project structure
+
+- `app.py`: app launcher
+- `simple_encrypt_app/constants.py`: shared labels and method options
+- `simple_encrypt_app/file_utils.py`: file read/write helpers
+- `simple_encrypt_app/crypto_utils.py`: encryption algorithms and secure format handling
+- `simple_encrypt_app/services.py`: encryption and decryption workflow
+- `simple_encrypt_app/ui.py`: Tkinter interface
+
+## Customer-facing improvements
+
+- simpler step-by-step layout
+- one action selector for encrypt or decrypt
+- one method selector with guidance text
+- clearer success and error messages
+- activity log inside the app
 
 ## License
 
