@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
@@ -21,6 +22,9 @@ class EncryptionApp:
         self.destination_path = tk.StringVar()
         self.status_var = tk.StringVar(value="Welcome. Choose a file, pick a method, and press Start.")
         self.method_hint_var = tk.StringVar(value=METHOD_DESCRIPTIONS["ChaCha20-Poly1305"])
+        self.progress_var = tk.DoubleVar(value=0.0)
+        self.progress_text_var = tk.StringVar(value="No task running.")
+        self.is_processing = False
 
         self.configure_style()
         self.build_ui()
@@ -102,8 +106,11 @@ class EncryptionApp:
 
         self.primary_button = ttk.Button(action_frame, text="Start Encryption", style="Primary.TButton", command=self.process_file)
         self.primary_button.grid(row=0, column=0, sticky="ew")
+        self.progress_bar = ttk.Progressbar(action_frame, orient="horizontal", mode="determinate", maximum=100, variable=self.progress_var)
+        self.progress_bar.grid(row=1, column=0, sticky="ew", pady=(12, 0))
+        ttk.Label(action_frame, textvariable=self.progress_text_var).grid(row=2, column=0, sticky="w", pady=(8, 0))
         ttk.Label(action_frame, textvariable=self.status_var, foreground="#1f4e79", wraplength=760).grid(
-            row=1, column=0, sticky="w", pady=(12, 0)
+            row=3, column=0, sticky="w", pady=(12, 0)
         )
 
         log_frame = ttk.LabelFrame(main, text="Recent Activity", style="Section.TLabelframe", padding=14)
@@ -130,6 +137,28 @@ class EncryptionApp:
         self.log_box.insert("end", f"{message}\n")
         self.log_box.see("end")
         self.log_box.configure(state="disabled")
+
+    def set_progress(self, value: float, message: str) -> None:
+        self.progress_var.set(value)
+        self.progress_text_var.set(message)
+
+    def update_progress_from_worker(self, value: float, message: str) -> None:
+        self.root.after(0, lambda: self.set_progress(value, message))
+
+    def set_processing_state(self, is_processing: bool) -> None:
+        self.is_processing = is_processing
+        self.primary_button.configure(state="disabled" if is_processing else "normal")
+
+    def finish_processing(self, success: bool, message: str) -> None:
+        self.set_processing_state(False)
+        if success:
+            self.set_progress(100, "Finished successfully.")
+            self.log(message)
+            messagebox.showinfo(APP_TITLE, message, parent=self.root)
+        else:
+            self.set_progress(0, "Task stopped.")
+            self.log(f"Error: {message}")
+            messagebox.showerror(APP_TITLE, message, parent=self.root)
 
     def select_source_file(self) -> None:
         path = filedialog.askopenfilename(title="Select source file")
@@ -192,21 +221,47 @@ class EncryptionApp:
 
     def process_file(self) -> None:
         try:
+            if self.is_processing:
+                return
             source, destination = self.ensure_paths()
             mode = self.mode_var.get()
             method = self.method_var.get()
             secret = self.ask_secret(mode, method)
+            self.set_processing_state(True)
+            self.set_progress(0, "Starting task...")
 
-            if mode == "Encrypt":
-                message = encrypt_with_method(method, source, destination, secret, self.base_dir)
-            else:
-                message = decrypt_with_method(method, source, destination, secret)
-
-            self.log(message)
-            messagebox.showinfo(APP_TITLE, message, parent=self.root)
+            worker = threading.Thread(
+                target=self.run_process_task,
+                args=(mode, method, source, destination, secret),
+                daemon=True,
+            )
+            worker.start()
         except Exception as error:
             self.log(f"Error: {error}")
             messagebox.showerror(APP_TITLE, str(error), parent=self.root)
+
+    def run_process_task(self, mode: str, method: str, source: str, destination: str, secret: str) -> None:
+        try:
+            if mode == "Encrypt":
+                message = encrypt_with_method(
+                    method,
+                    source,
+                    destination,
+                    secret,
+                    self.base_dir,
+                    progress_callback=self.update_progress_from_worker,
+                )
+            else:
+                message = decrypt_with_method(
+                    method,
+                    source,
+                    destination,
+                    secret,
+                    progress_callback=self.update_progress_from_worker,
+                )
+            self.root.after(0, lambda: self.finish_processing(True, message))
+        except Exception as error:
+            self.root.after(0, lambda: self.finish_processing(False, str(error)))
 
 
 def create_app() -> tk.Tk:
