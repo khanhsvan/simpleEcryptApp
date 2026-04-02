@@ -62,6 +62,7 @@ Important:
 - simpler step-by-step layout
 - one action selector for encrypt or decrypt
 - one method selector with guidance text
+- live progress bar for encryption and decryption tasks
 - clearer success and error messages
 - activity log inside the app
 
