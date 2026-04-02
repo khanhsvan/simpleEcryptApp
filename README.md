@@ -1,30 +1,58 @@
-This is a Python application using a graphical user interface (GUI) to encrypt and decrypt files using various encryption algorithms such as Caesar, Playfair, RSA, and AES.
-Requirements
-Python 3.x
-Necessary libraries installed, can be installed by running:
+# Simple Encrypt App
+
+Simple Encrypt App is a Tkinter desktop application for encrypting and decrypting files with five methods:
+
+- ChaCha20-Poly1305 for fast modern file protection
+- AES for general file encryption
+- RSA with a hybrid RSA + AES format for larger files
+- Caesar cipher for text files
+- Playfair cipher for text files
+
+## Requirements
+
+- Python 3.x
+- Required packages from `requirement.txt`
+
+Install dependencies:
+
 ```bash
-pip install -r requirements.txt
+pip install -r requirement.txt
 ```
-pip install -r requirements.txt
-## Usage
-Open the application by running the .py file.
 
-Choose the encryption method from the list of available methods.
+## Run the app
 
-Select the source file you want to encrypt by clicking the "Select Source file" button and choosing the corresponding file in the opened dialog box.
+```bash
+python app.py
+```
 
-Choose the location and name of the destination file where you want to save the encrypted file by clicking the "Select Destination File" button and selecting the location and name in the opened dialog box.
+## Better structure
 
-Press the "Encrypt" button to encrypt the file.
+The app is now separated into smaller modules to make it easier to control and extend:
 
-To decrypt a file, select the decryption method from the list of available methods.
+- `app.py`: small launcher
+- `simple_encrypt_app/constants.py`: shared app text and options
+- `simple_encrypt_app/file_utils.py`: file reading and writing helpers
+- `simple_encrypt_app/crypto_utils.py`: encryption and decryption algorithms
+- `simple_encrypt_app/services.py`: business flow for encrypting and decrypting files
+- `simple_encrypt_app/ui.py`: customer-facing desktop interface
 
-Choose the encrypted file you want to decrypt by clicking the "Select Source file" button and choosing the corresponding file in the opened dialog box.
+## Easier customer flow
 
-Choose the location and name of the destination file where you want to save the decrypted file by clicking the "Select Destination File" button and selecting the location and name in the opened dialog box.
+- One clear action selector for Encrypt or Decrypt
+- One method selector with plain-language guidance
+- ChaCha20-Poly1305 is now the recommended fast option for most customers
+- Step-by-step layout for choosing files and running the action
+- Status messages and recent activity log inside the app
+- Friendly popups for success and error states
 
-Press the "Decrypt" button to decrypt the file.
-## Note
-When using AES, you will be prompted to enter a key of length 16, 24, or 32 characters. Make sure you enter a valid key.
-When using RSA, you will need to generate an RSA key pair beforehand. Remember to securely store the private key.
-This project is licensed under the [License Name] - see the [LICENSE.md](LICENSE.md) file for details.
+## Notes
+
+- ChaCha20-Poly1305 uses a passphrase and is the best default choice for speed and ease of use.
+- AES keys must be 16, 24, or 32 bytes when encoded as UTF-8.
+- Caesar and Playfair are text-only methods and are best used with plain text files.
+- Playfair removes non-letter characters during encryption and decryption.
+- RSA keys are generated automatically into the local `keys/` folder when needed.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
