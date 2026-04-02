@@ -1,12 +1,12 @@
 import struct
 from pathlib import Path
-import hashlib
 
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -15,16 +15,32 @@ from .constants import RSA_MAGIC, TEXT_ENCODING
 from .file_utils import read_binary_file
 
 
+CHACHA_MAGIC = b"SEACHA1"
+CHACHA_SALT_LENGTH = 16
+CHACHA_NONCE_LENGTH = 12
+CHACHA_KEY_LENGTH = 32
+CHACHA_SCRYPT_N = 2**14
+CHACHA_SCRYPT_R = 8
+CHACHA_SCRYPT_P = 1
+
+
 def validate_aes_key(key: str) -> bool:
     return len(key.encode(TEXT_ENCODING)) in (16, 24, 32)
 
 
 def validate_passphrase(passphrase: str) -> bool:
-    return bool(passphrase and passphrase.strip())
+    return bool(passphrase and len(passphrase.strip()) >= 12)
 
 
-def derive_chacha_key(passphrase: str) -> bytes:
-    return hashlib.sha256(passphrase.encode(TEXT_ENCODING)).digest()
+def derive_chacha_key(passphrase: str, salt: bytes) -> bytes:
+    kdf = Scrypt(
+        salt=salt,
+        length=CHACHA_KEY_LENGTH,
+        n=CHACHA_SCRYPT_N,
+        r=CHACHA_SCRYPT_R,
+        p=CHACHA_SCRYPT_P,
+    )
+    return kdf.derive(passphrase.encode(TEXT_ENCODING))
 
 
 def pad_bytes(data: bytes) -> bytes:
@@ -58,20 +74,50 @@ def aes_decrypt_bytes(payload: bytes, key: bytes) -> bytes:
 
 
 def chacha20_encrypt_bytes(data: bytes, passphrase: str) -> bytes:
-    nonce = get_random_bytes(12)
-    key = derive_chacha_key(passphrase)
+    salt = get_random_bytes(CHACHA_SALT_LENGTH)
+    nonce = get_random_bytes(CHACHA_NONCE_LENGTH)
+    key = derive_chacha_key(passphrase, salt)
     cipher = ChaCha20Poly1305(key)
     ciphertext = cipher.encrypt(nonce, data, None)
-    return nonce + ciphertext
+    header = (
+        CHACHA_MAGIC
+        + struct.pack(">I", CHACHA_SCRYPT_N)
+        + struct.pack(">I", CHACHA_SCRYPT_R)
+        + struct.pack(">I", CHACHA_SCRYPT_P)
+        + salt
+        + nonce
+    )
+    return header + ciphertext
 
 
 def chacha20_decrypt_bytes(payload: bytes, passphrase: str) -> bytes:
-    if len(payload) <= 12:
-        raise ValueError("Encrypted ChaCha20 file is too short to contain a nonce.")
+    minimum_size = len(CHACHA_MAGIC) + 12 + CHACHA_SALT_LENGTH + CHACHA_NONCE_LENGTH + 16
+    if len(payload) < minimum_size:
+        raise ValueError("Encrypted ChaCha20 file is too short or incomplete.")
+    if not payload.startswith(CHACHA_MAGIC):
+        raise ValueError("This file is not in the app's ChaCha20-Poly1305 format.")
 
-    nonce = payload[:12]
-    ciphertext = payload[12:]
-    key = derive_chacha_key(passphrase)
+    offset = len(CHACHA_MAGIC)
+    scrypt_n = struct.unpack(">I", payload[offset:offset + 4])[0]
+    offset += 4
+    scrypt_r = struct.unpack(">I", payload[offset:offset + 4])[0]
+    offset += 4
+    scrypt_p = struct.unpack(">I", payload[offset:offset + 4])[0]
+    offset += 4
+    salt = payload[offset:offset + CHACHA_SALT_LENGTH]
+    offset += CHACHA_SALT_LENGTH
+    nonce = payload[offset:offset + CHACHA_NONCE_LENGTH]
+    offset += CHACHA_NONCE_LENGTH
+    ciphertext = payload[offset:]
+
+    kdf = Scrypt(
+        salt=salt,
+        length=CHACHA_KEY_LENGTH,
+        n=scrypt_n,
+        r=scrypt_r,
+        p=scrypt_p,
+    )
+    key = kdf.derive(passphrase.encode(TEXT_ENCODING))
     cipher = ChaCha20Poly1305(key)
 
     try:

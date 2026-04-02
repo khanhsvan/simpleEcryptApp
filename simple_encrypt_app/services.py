@@ -30,10 +30,10 @@ def encrypt_with_method(method: str, source: str, destination: str, secret: str,
 
     if method == "ChaCha20-Poly1305":
         if not validate_passphrase(secret):
-            raise ValueError("ChaCha20-Poly1305 needs a passphrase.")
+            raise ValueError("ChaCha20-Poly1305 needs a passphrase with at least 12 characters.")
         encrypted_data = chacha20_encrypt_bytes(read_binary_file(source), secret)
         write_binary_file(destination, encrypted_data)
-        return "ChaCha20-Poly1305 encryption complete. This is the recommended fast option for everyday use."
+        return "ChaCha20-Poly1305 encryption complete. The file now uses salted scrypt key derivation and authenticated encryption."
 
     if method == "AES":
         if not validate_aes_key(secret):
@@ -66,7 +66,7 @@ def decrypt_with_method(method: str, source: str, destination: str, secret: str)
 
     if method == "ChaCha20-Poly1305":
         if not validate_passphrase(secret):
-            raise ValueError("ChaCha20-Poly1305 needs a passphrase.")
+            raise ValueError("ChaCha20-Poly1305 needs a passphrase with at least 12 characters.")
         decrypted_data = chacha20_decrypt_bytes(read_binary_file(source), secret)
         write_binary_file(destination, decrypted_data)
         return "ChaCha20-Poly1305 decryption complete."

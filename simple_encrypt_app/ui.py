@@ -46,7 +46,7 @@ class EncryptionApp:
         ttk.Label(hero, text=APP_TITLE, style="HeroTitle.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
             hero,
-            text="A simpler customer flow for protecting files with guided choices, clearer feedback, and a faster recommended option.",
+            text="A simpler customer flow for protecting files with guided choices, clearer feedback, and a stronger recommended option.",
             style="HeroText.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(4, 0))
 
@@ -168,9 +168,9 @@ class EncryptionApp:
 
         if method == "ChaCha20-Poly1305":
             prompt = (
-                "Enter the passphrase used for this file:"
+                "Enter the passphrase used for this file (minimum 12 characters):"
                 if mode == "Decrypt"
-                else "Enter a passphrase for the fast ChaCha20-Poly1305 method:"
+                else "Enter a strong passphrase for ChaCha20-Poly1305 (minimum 12 characters):"
             )
             return self.ask_required_string("Passphrase", prompt)
 
